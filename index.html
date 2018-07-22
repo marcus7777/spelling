@@ -19,10 +19,7 @@
     }
   </style>
   <script src="./bower_components/webcomponentsjs/webcomponents-loader.js"></script>
-  <script>
-     let module = {};
-  </script>
-  <script src="./node_modules/fit-curve/src/fit-curve.js"></script>
+  <script src="./bower_components/fit-curve/lib/fit-curve.min.js"></script>
 
   <link rel="import" href="./bower_components/localstorage-load/localstorage-load.html">
   <script src="tf.js"> </script>
@@ -33,10 +30,10 @@
   </select>
   <textarea></textarea>
   <div>
-    <input type="checkbox" id="addTraining" name="feature" value="horns" /> <label for="addTraining">Add to training data</label>
+    <input type="checkbox" id="addTraining" name="feature" value="horns" /> <label for="addTraining">Edit training data</label>
   </div>
   <localstorage-load name="data"></localstorage-load>
-  <button onclick="train()" > Train </button>
+  <button id="Button" onclick="train()" > Train </button>
 <script>
 
 //import * as tf from '@tensorflow/tfjs';
@@ -99,7 +96,7 @@ async function train() {
   // findShape
   const longestSpell = 10
   const spellSize = 2 * 4 * longestSpell;
-
+  document.getElementById("Button").disabled = true;
   function getRandomSpell() {
     var label = getRandom(Object.keys(labelsCurves))
     var aSpell = getRandom(labelsCurves[label]).map(curve => curve.map(xy => xy.map(val => {
@@ -181,7 +178,7 @@ async function train() {
     batch.xs.dispose();
     batch.labels.dispose();
     if (testBatch != null) {
-      console.log("Loss/Accuracy " + i + " : " + Math.round(history.history.loss[0] * 1000), Math.round( history.history.acc[0] * 1000));
+      console.log("% Done/Change/Accuracy " + Math.round(i/TRAIN_BATCHES*1000)/10, Math.round(history.history.loss[0] * 100)/100, Math.round( history.history.acc[0] * 1000)/10);
       testBatch.xs.dispose();
       testBatch.labels.dispose();
     }
@@ -193,7 +190,11 @@ async function train() {
     }
     await tf.nextFrame();
   }
-  const saveResults = await model.save('localstorage://spelling');
+  model.save('localstorage://spelling').then(v => {
+    console.log("saved", v);
+    loadModel();
+    document.getElementById("Button").disabled = false;
+  });
 }
 function setupCanvas() {
   const e = document.getElementById("select");
