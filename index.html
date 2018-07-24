@@ -38,14 +38,14 @@
   </div>
   load a zip:
   <localstorage-load name="data" on-load="load()"></localstorage-load>
-  <button id="Button" onclick="train()" > Train </button>
+  <button id="Button" onclick="train()"> Train </button>
+  <button onclick="saveModal()"> Save Modal </button>
   <p>Here is some localstorage file you can download and upload:</p>
   <a href=model.zip >model.zip</a>
   <a href=tranning.zip >tranning.zip</a>
   <a href=both.zip >both.zip</a>
 
-  <script src="spelling.js">
-  </script>
+  <script src="spelling.js"></script>
 
 <script>
 
@@ -63,7 +63,9 @@ function addToArray(x, y) {
         spell.push([x, y])
     }
 }
-
+function saveModal() {
+    tf.io.copyModel('localstorage://spelling', 'downloads://spelling');
+}
 var x = document.getElementById("select");
 gr.theSpells.map(t => {
     var option = document.createElement("option");
@@ -191,18 +193,19 @@ async function train() {
     }
     if (i % SAVE_ITERATION_FREQUENCY === 0 && Math.round( history.history.acc[0] * 10000) > 9999 ) {
        model.save('localstorage://spelling').then(v => {
-         console.log("saved");
-         gr.loadModel();
+         console.log("saved",v);
+         gr.loadModel("localstorage");
        })
     }
     await tf.nextFrame();
   }
   model.save('localstorage://spelling').then(v => {
     console.log("saved", v);
-    loadModel();
+    gr.loadModel("localstorage");
     document.getElementById("Button").disabled = false;
   });
 }
+
 function setupCanvas() {
   const e = document.getElementById("select");
   spells = labelsCurves[e.options[e.selectedIndex].text] || [];
