@@ -33,8 +33,10 @@
   <div>
     <input type="checkbox" id="addTraining" name="feature" value="horns" /> <label for="addTraining">Edit training data</label>
   </div>
-  <localstorage-load name="data"></localstorage-load>
+  load a zip:
+  <localstorage-load name="data" on-load="load()"></localstorage-load>
   <button id="Button" onclick="train()" > Train </button>
+  <p>Here is some localstorage file you can download and upload:</p>
   <a href=model.zip >model.zip</a>
   <a href=tranning.zip >tranning.zip</a>
   <a href=both.zip >both.zip</a>
@@ -298,14 +300,18 @@ function predict(spellToRecognise) {
   let spellSize = 80
   let flatSp = spellToRecognise.flat(3)
   var pad = Array.apply(null, Array(spellSize - flatSp.length)).map(Number.prototype.valueOf, 0);
-  return loaded.predict(tf.tensor2d(flatSp.concat(pad), [1,spellSize])).data().then(p => {
-    let max = Math.max(... p)
-    if (max > .8) {
-      return Math.round(max * 100)/100 + ':' +  Object.keys(labelsCurves)[p.indexOf(max)]
-    } else {
-      return "??? - ???"
-    }
-  })
+  if (loaded) {
+    return loaded.predict(tf.tensor2d(flatSp.concat(pad), [1,spellSize])).data().then(p => {
+      let max = Math.max(... p)
+      if (max > .8) {
+        return Math.round(max * 100)/100 + ':' +  Object.keys(labelsCurves)[p.indexOf(max)]
+      } else {
+        return "??? - ???"
+      }
+    })
+  } else {
+    return "No model loaded";
+  }
 }
 function save(spellToSave) {
   oldX = null

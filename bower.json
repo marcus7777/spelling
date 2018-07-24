@@ -15,6 +15,7 @@
     "tests"
   ],
   "dependencies": {
-    "localstorage-load": "marcus7777/localstorage-load"
+    "localstorage-load": "marcus7777/localstorage-load",
+    "fit-curve": "^0.1.6"
   }
 }
