@@ -2,7 +2,14 @@ class spelling{
     constructor() {
         this.theSpells = ["Accio","Aguamenti","Alohomora","Avis","Bombarda","Colovaria","Engorgio","Epoximise","Evanesco","Expelliarmus","Flipendo","Fumos","Gemino","Impedimenta","Incendio","Locomotor","Lumos","Lumos Maxima","Oppugno","Orchideous","Periculum","Reducio","Reparo","Serpensortia","Wingardium Leviosa","not a Spell"].sort() 
         this.numberOfspells = this.theSpells.length;
-        this.loaded = tf.loadModel('spelling.json');
+        this.loadModel();
+    }
+    loadModel(load) {
+        if (load) {
+           this.loaded = tf.loadModel(load + '://spelling')
+        } else {
+           this.loaded = tf.loadModel('spelling.json');
+        }
     }
     predict(spellToRecognise) {
       let spellSize = 80
