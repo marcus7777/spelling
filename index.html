@@ -21,7 +21,10 @@
   <script src="./bower_components/webcomponentsjs/webcomponents-loader.js"></script>
   <script src="./bower_components/fit-curve/lib/fit-curve.min.js"></script>
   <script src="tf.js"> </script>
-
+  <script src="tensorflowjs-models-spelling-info.js"></script>
+  <script src="tensorflowjs-models-spelling-model-topology.js"></script>
+  <script src="tensorflowjs-models-spelling-weight-data.js"></script>
+  <script src="tensorflowjs-models-spelling-weight-specs.js"></script>
   <link rel="import" href="./bower_components/localstorage-load/localstorage-load.html">
   
 </head>
@@ -108,7 +111,7 @@ async function train() {
     })))
 
     let arrayOfZero = []
-    for (let i = 0; i < numberOfspells; i++) {
+    for (let i = 0; i < gr.numberOfspells; i++) {
         if (Object.keys(labelsCurves).indexOf(label) === i) {
             arrayOfZero.push(1)
         } else {
@@ -132,7 +135,7 @@ async function train() {
     }
 
     const xs     = tf.tensor2d(batchSpellsArray.flat(2), [batchSize, spellSize] ); //,      'bool');
-    const labels = tf.tensor2d(batchLabelsArray, [batchSize, numberOfspells] );    //,      'bool');
+    const labels = tf.tensor2d(batchLabelsArray, [batchSize, gr.numberOfspells] );    //,      'bool');
 
     return {xs, labels};
   }
@@ -147,7 +150,7 @@ async function train() {
     model.add(tf.layers.dense({units: 80,inputShape: [2 * 4 * longestSpell], kernelInitializer: 'varianceScaling', activation: 'elu'}));
     model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
     model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
-    model.add(tf.layers.dense({units: numberOfspells, kernelInitializer: 'varianceScaling', activation: 'softmax'}));
+    model.add(tf.layers.dense({units: gr.numberOfspells, kernelInitializer: 'varianceScaling', activation: 'softmax'}));
     model.compile({
       optimizer: optimizer,
       loss: 'categoricalCrossentropy',
@@ -189,7 +192,7 @@ async function train() {
     if (i % SAVE_ITERATION_FREQUENCY === 0 && Math.round( history.history.acc[0] * 10000) > 9999 ) {
        model.save('localstorage://spelling').then(v => {
          console.log("saved");
-         loadModel();
+         gr.loadModel();
        })
     }
     await tf.nextFrame();
