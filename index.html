@@ -20,9 +20,9 @@
   </style>
   <script src="./bower_components/webcomponentsjs/webcomponents-loader.js"></script>
   <script src="./bower_components/fit-curve/lib/fit-curve.min.js"></script>
+  <script src="tf.js"> </script>
 
   <link rel="import" href="./bower_components/localstorage-load/localstorage-load.html">
-  <script src="tf.js"> </script>
   
 </head>
 <body>
@@ -40,7 +40,12 @@
   <a href=model.zip >model.zip</a>
   <a href=tranning.zip >tranning.zip</a>
   <a href=both.zip >both.zip</a>
+
+  <script src="spelling.js">
+  </script>
+
 <script>
+
 
 //import * as tf from '@tensorflow/tfjs';
 
@@ -49,17 +54,20 @@ let csv = document.querySelector('textarea');
 let addTraining = document.querySelector('input#addTraining');
 let cx = c.getContext('2d');
 let mousedown = false;
-
-const theSpells = ["Accio","Aguamenti","Alohomora","Avis","Bombarda","Colovaria","Engorgio","Epoximise","Evanesco","Expelliarmus","Flipendo","Fumos","Gemino","Impedimenta","Incendio","Locomotor","Lumos","Lumos Maxima","Oppugno","Orchideous","Periculum","Reducio","Reparo","Serpensortia","Wingardium Leviosa","not a Spell"].sort()
+let gr = new spelling()
+function addToArray(x, y) {
+    if (x > 0 && y > 0) {
+        spell.push([x, y])
+    }
+}
 
 var x = document.getElementById("select");
-theSpells.map(t => {
+gr.theSpells.map(t => {
     var option = document.createElement("option");
     option.text = t;
     x.add(option);
 });
 
-const numberOfspells = theSpells.length;
 
 let oldX = null;
 var oldY = null;
@@ -67,24 +75,14 @@ let resolution = 27;
 let spell = [];
 let spells = [];
 let labelsCurves = {};
-for (index = 0; index < theSpells.length; ++index) {
+for (index = 0; index < gr.theSpells.length; ++index) {
     if (localStorage.getItem("labels")) {
-        labelsCurves[theSpells[index]] = JSON.parse(localStorage.getItem("labels"))[theSpells[index]] || [];
+        labelsCurves[gr.theSpells[index]] = JSON.parse(localStorage.getItem("labels"))[gr.theSpells[index]] || [];
     } else {
-        labelsCurves[theSpells[index]] = [];
+        labelsCurves[gr.theSpells[index]] = [];
     }
 }
 
-let loaded
-async function loadModel () {
-  try {
-    loaded = await tf.loadModel('localstorage://spelling');
-   //  model.initialWeights = loaded.weights;
-  } catch(e) {
-    console.log("not loaded")
-  }
-}
-loadModel()
 
 let spellsOnLine;
 
@@ -270,10 +268,14 @@ function onmouseup(ev) {
   mousedown = false;
   ev.preventDefault();
   if (spell.length > 15) {
-    predict(normSpell(spell)).then(p => {
-        csv.value = p
+    gr.recognise(spell).then(p => {
+        if (p.score > .8) {
+            csv.value = p.spell
+        } else {
+            csv.value = "?"
+        }
     });
-    save(normSpell(spell));
+    save(gr.normSpell(spell));
   } else if (addTraining.checked === true) {
     if (ev.changedTouches) {
       index = (Math.floor((ev.changedTouches["0"].clientY - 10) / 30) * spellsOnLine) + Math.floor((ev.changedTouches["0"].clientX - 15) / 30)
@@ -296,23 +298,6 @@ var uniqueArray = function(arrArg) {
     return arr.map(v => JSON.stringify(v)).indexOf(JSON.stringify(elem)) == pos;
   });
 };
-function predict(spellToRecognise) {
-  let spellSize = 80
-  let flatSp = spellToRecognise.flat(3)
-  var pad = Array.apply(null, Array(spellSize - flatSp.length)).map(Number.prototype.valueOf, 0);
-  if (loaded) {
-    return loaded.predict(tf.tensor2d(flatSp.concat(pad), [1,spellSize])).data().then(p => {
-      let max = Math.max(... p)
-      if (max > .8) {
-        return Math.round(max * 100)/100 + ':' +  Object.keys(labelsCurves)[p.indexOf(max)]
-      } else {
-        return "??? - ???"
-      }
-    })
-  } else {
-    return "No model loaded";
-  }
-}
 function save(spellToSave) {
   oldX = null
   oldY = null
@@ -345,104 +330,6 @@ function onmousemove(ev) {
     paint(x, y);
     addToArray(x, y);
   } 
-}
-function addToArray(x, y) {
-    if (x > 0 && y > 0) {
-        spell.push([x, y])
-    }
-}
-function distance(pa, pb) {
-  var a = pa[0] - pb[0];
-  var b = pa[1] - pb[1];
-  if (a || b) {
-    return Math.sqrt(a*a + b*b);
-  }
-  return 0
-}
-function isInALine(a, b, c) {
-   if (a && b && c) {
-       return (distance(a, b) + distance(b, c)) === distance(a, c)
-   }
-   return false
-}
-function toCurve(s) {
-    // max curves
-    var size = 10 
-    var op0 = fitCurve(s, 6);
-    var op1 = fitCurve(s, 5);
-    var op2 = fitCurve(s, 4);
-    var op3 = fitCurve(s, 3);
-    var op4 = fitCurve(s, 2);
-    var op5 = fitCurve(s, 1);
-    let picked
-    if (op5.length <= size) {
-      picked = op5;
-    } else if (op4.length <= size) {
-      picked = op4;
-    } else if (op3.length <= size) {
-      picked = op3;
-    } else if (op2.length <= size) {
-      picked = op2;
-    } else if (op1.length <= size) {
-      picked = op1;
-    } else {
-      picked = op0.slice(0, size);
-    }
-
-    return picked.map(v => v.map(va => va.map(val => {
-        return Math.round(val)
-    })))
-}
-function normCurve(Curve) {
-
-  const minX = Curve.reduce((a, v) => {
-    return Math.min(v[0][0],v[1][0],v[2][0],v[3][0],a)
-  }, 2000)
-  const minY = Curve.reduce((a, v) => {
-    return Math.min(v[0][1],v[1][1],v[2][1],v[3][1],a)
-  }, 2000)
-  const maxX = Curve.reduce((a, v) => {
-    return Math.max(v[0][0],v[1][0],v[2][0],v[3][0],a)
-  }, 0)
-  const maxY = Curve.reduce((a, v) => {
-    return Math.max(v[0][1],v[1][1],v[2][1],v[3][1],a)
-  }, 0)
-
-  const factor = resolution / distance([maxX, maxY],  [minX, minY])
-  return Curve.map(va => {
-    return va.map(val => [Math.floor((val[0] - minX) * factor), Math.floor((val[1] - minY) * factor)] )
-  })
-}
-function normSpell(theSpell) {
-   
-  const minX = theSpell.reduce((a, v) => {
-    return Math.min(v[0],a)
-  }, 2000)
-  const minY = theSpell.reduce((a, v) => {
-    return Math.min(v[1],a)
-  }, 2000)
-  const maxX = theSpell.reduce((a, v) => {
-    return Math.max(v[0],a)
-  }, 0)
-  const maxY = theSpell.reduce((a, v) => {
-    return Math.max(v[1],a)
-  }, 0)
-
-  const factor = resolution / distance([maxX, maxY],  [minX, minY])
-  
-  return normCurve(toCurve(spell.map(va => {
-    return [Math.floor((va[0] - minX) * factor), Math.floor((va[1] - minY) * factor)]
-  }).reduce((a,val,i,arr) => {
-    // A-B---C drop B
-    //
-    // A-----B include B
-    //      /
-    //     C
-    if (i === 0 || i + 1 === arr.length || !isInALine(a.slice(-1), val, arr[i+1])) { 
-      a.push(val)
-    }
-    return a
-  }, [])));
 }
 function paint(x, y) {
   cx.beginPath();
