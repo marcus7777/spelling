@@ -1,3 +1,5 @@
+import fitCurve from './fit-curve.js';
+
 class spelling {
     constructor() {
         this.theSpells = ["Accio","Aguamenti","Alohomora","Avis","Bombarda","Colovaria","Engorgio","Epoximise","Evanesco","Expelliarmus","Flipendo","Fumos","Gemino","Impedimenta","Incendio","Locomotor","Lumos","Lumos Maxima","Oppugno","Orchideous","Periculum","Reducio","Reparo","Serpensortia","Wingardium Leviosa","not a Spell"].sort();
