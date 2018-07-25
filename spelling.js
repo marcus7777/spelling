@@ -91,7 +91,7 @@ class spelling {
     
         const factor = this.resolution / this.distance([maxX, maxY],  [minX, minY])
       
-        return this.normCurve(this.toCurve(spell.map(va => {
+        return this.normCurve(this.toCurve(theSpell.map(va => {
             return [Math.floor((va[0] - minX) * factor), Math.floor((va[1] - minY) * factor)]
         }).reduce((a,val,i,arr) => {
              // A-B---C drop B
