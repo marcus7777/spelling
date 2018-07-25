@@ -3,6 +3,7 @@ class spelling {
         this.theSpells = ["Accio","Aguamenti","Alohomora","Avis","Bombarda","Colovaria","Engorgio","Epoximise","Evanesco","Expelliarmus","Flipendo","Fumos","Gemino","Impedimenta","Incendio","Locomotor","Lumos","Lumos Maxima","Oppugno","Orchideous","Periculum","Reducio","Reparo","Serpensortia","Wingardium Leviosa","not a Spell"].sort();
         this.numberOfspells = this.theSpells.length;
         this.loadModel();
+        this.resolution = 27;
     }
     loadModel(load) {
         if (load) {
@@ -68,7 +69,7 @@ class spelling {
             return Math.max(v[0][1],v[1][1],v[2][1],v[3][1],a)
         }, 0)
     
-         const factor = resolution / this.distance([maxX, maxY],  [minX, minY])
+         const factor = this.resolution / this.distance([maxX, maxY],  [minX, minY])
          return Curve.map(va => {
              return va.map(val => [Math.floor((val[0] - minX) * factor), Math.floor((val[1] - minY) * factor)] )
          })
@@ -88,7 +89,7 @@ class spelling {
             return Math.max(v[1],a)
         }, 0)
     
-        const factor = resolution / this.distance([maxX, maxY],  [minX, minY])
+        const factor = this.resolution / this.distance([maxX, maxY],  [minX, minY])
       
         return this.normCurve(this.toCurve(spell.map(va => {
             return [Math.floor((va[0] - minX) * factor), Math.floor((va[1] - minY) * factor)]
