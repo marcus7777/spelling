@@ -25,15 +25,15 @@
 </head>
 <body>
   <canvas></canvas>
-  <select id="select" onchange="load()"></select>
+  <select id="select"></select>
   <textarea></textarea>
   <div>
     <input type="checkbox" id="addTraining" name="feature" value="horns" /> <label for="addTraining">Edit training data</label>
   </div>
   load a zip:
-  <localstorage-load name="data" on-load="load()"></localstorage-load>
+  <localstorage-load name="data"></localstorage-load>
   <button id="Button"> Train </button>
-  <button onclick="saveModal()"> Save Modal </button>
+  <button id="SaveModal"> Save Modal </button>
   <p>Here is some localstorage file you can download and upload:</p>
   <a href="both.zip">both.zip</a>
   <script type="module">
