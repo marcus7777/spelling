@@ -32,7 +32,7 @@ export function setup() {
   }
   function addToArray(x, y) {
     if (x > 0 && y > 0) {
-        spell.push([x, y])
+      spell.push([x, y])
     }
   }
   document.getElementById("SaveModal").addEventListener("click", function() {
@@ -56,17 +56,22 @@ export function setup() {
         labelsCurves[gr.theSpells[index]] = [];
       }
     }
- 
+    function unround(val) {
+      return val + ((window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)-.5 +(window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)/10-.05) // Math.random()-.5
+    } 
     // findShape
     const longestSpell = 10
     const spellSize = 2 * 4 * longestSpell;
     document.getElementById("Button").disabled = true;
     function getRandomSpell() {
       var label  = getRandom(Object.keys(labelsCurves))
-      var aSpell = getRandom(labelsCurves[label]) 
-      // .map(curve => curve.map(xy => xy.map(val => {
-      //   return val
-      // })))
+      var aSpell = getRandom(labelsCurves[label]).map(curve => curve.map(xy => xy.map(val => {
+        let unrounded = unround(val);
+        if (unrounded < 0 || unrounded > resolution) {
+          return val;
+        }
+        return unrounded;
+      })));
       
       let arrayOfZeroBut1 = []
       for (let i = 0; i < gr.numberOfspells; i++) {
@@ -101,7 +106,7 @@ export function setup() {
     const model = tf.sequential(); // TODO load
  
     const BATCH_SIZE = 80;
-    const TRAIN_BATCHES = 40000;
+    const TRAIN_BATCHES = 400000;
     const LEARNING_RATE = 0.00001;
     const optimizer = tf.train.adam(LEARNING_RATE);
     if (model.add) {
@@ -124,7 +129,7 @@ export function setup() {
     for (let i = 0; i < TRAIN_BATCHES; i++) {
       const batch = getBatch(BATCH_SIZE);
   
-      tf.nextFrame();
+      await tf.nextFrame();
       let testBatch;
       let validationData;
       // Every few batches test the accuracy of the mode.
@@ -139,7 +144,7 @@ export function setup() {
       // with batches.
       const history = await model.fit( batch.xs, batch.labels, {batchSize: BATCH_SIZE, validationData, epochs: 1});
   
-      tf.nextFrame();
+      await tf.nextFrame();
       batch.xs.dispose();
       batch.labels.dispose();
       if (testBatch != null) {
@@ -153,7 +158,7 @@ export function setup() {
            gr.loadModel("localstorage");
          })
       }
-      tf.nextFrame();
+      await tf.nextFrame();
     }
     model.save('localstorage://spelling').then(v => {
       console.log("saved", v);
