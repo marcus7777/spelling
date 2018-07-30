@@ -263,8 +263,8 @@ export function setup() {
     let index
     if (spell.length > 15) {
       gr.recognise(spell).then(p => {
-          if (p.score > .8) {
-              csv.value = p.spell
+          if (p.score > .85) {
+              csv.value = p.spell + " score:" + p.score
           } else {
               csv.value = "?"
           }
