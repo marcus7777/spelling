@@ -30,6 +30,20 @@ export function setup() {
       labelsCurves[gr.theSpells[index]] = [];
     }
   }
+  function bump(shape) {
+    if (shape) {
+      var angle = 20;
+      var radians = ((Math.PI / 180) * angle * (Math.random()-.5))
+      var cos = Math.cos(radians)
+      var sin = Math.sin(radians)
+      var c = resolution / 2
+      return shape.map(arra => arra.map((xy) => { 
+        const nx = (cos * (xy[0] - c)) + (sin * (xy[1] - c)) + c;
+        const ny = (cos * (xy[1] - c)) - (sin * (xy[0] - c)) + c;
+        return [nx, ny];
+      }));
+    }
+  }
   function addToArray(x, y) {
     if (x > 0 && y > 0) {
       spell.push([x, y])
@@ -63,16 +77,28 @@ export function setup() {
     const longestSpell = 10
     const spellSize = 2 * 4 * longestSpell;
     document.getElementById("Button").disabled = true;
+    var Looping = 0
     function getRandomSpell() {
-      var label  = getRandom(Object.keys(labelsCurves))
-      var aSpell = getRandom(labelsCurves[label]).map(curve => curve.map(xy => xy.map(val => {
-        let unrounded = unround(val);
-        if (unrounded < 0 || unrounded > resolution) {
-          return val;
-        }
-        return unrounded;
-      })));
-      
+      var label  = getRandom(Object.keys(labelsCurves));
+      var aSpell = bump(getRandom(labelsCurves[label]));
+      if (aSpell) {
+        var theUnroundSpell = aSpell.map(curve => curve.map(xy => xy.map(val => {
+          let unrounded = unround(val);
+          if (unrounded < 0) {
+            return 0;
+          }
+          if (unrounded > resolution) {
+            return resolution;
+          }
+          return unrounded;
+        })));
+        Looping = 0
+      } else {
+        Looping++
+        console.log(Looping)
+        return getRandomSpell()
+      }
+ 
       let arrayOfZeroBut1 = []
       for (let i = 0; i < gr.numberOfspells; i++) {
           if (Object.keys(labelsCurves).indexOf(label) === i) {
@@ -82,7 +108,7 @@ export function setup() {
           } 
       }
         
-      return [ arrayOfZeroBut1, aSpell.flat(3)]
+      return [ arrayOfZeroBut1, theUnroundSpell.flat(3)]
     }
   
     function getBatch(batchSize) {
@@ -186,7 +212,7 @@ export function setup() {
       oldX = null;
       oldY = null;
 
-      s.map((p, i, spell) => {
+      bump(s).map((p, i, spell) => {
         cx.beginPath();
         cx.moveTo(p[0][0] + addX, p[0][1] + addY);
         cx.bezierCurveTo(p[1][0] + addX, p[1][1] + addY,p[2][0] + addX, p[2][1] + addY, p[3][0] + addX, p[3][1] + addY);
