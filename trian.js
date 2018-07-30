@@ -30,6 +30,18 @@ export function setup() {
       labelsCurves[gr.theSpells[index]] = [];
     }
   }
+  function bump(shape) {
+    var angle = 10
+    var radians = ((Math.PI / 180) * angle * (Math.random()-.5))
+    var cos = Math.cos(radians)
+    var sin = Math.sin(radians)
+    var c = resolution / 2
+    return shape.map((xy) => { 
+      nx = (cos * (xy[0] - c)) + (sin * (xy[1] - c)) + c,
+      ny = (cos * (xy[1] - c)) - (sin * (xy[0] - c)) + c;
+      return [nx, ny];
+    })
+  }
   function addToArray(x, y) {
     if (x > 0 && y > 0) {
         spell.push([x, y])
@@ -63,7 +75,7 @@ export function setup() {
     document.getElementById("Button").disabled = true;
     function getRandomSpell() {
       var label  = getRandom(Object.keys(labelsCurves))
-      var aSpell = getRandom(labelsCurves[label]) 
+      var aSpell = bump(getRandom(labelsCurves[label])) 
       // .map(curve => curve.map(xy => xy.map(val => {
       //   return val
       // })))
