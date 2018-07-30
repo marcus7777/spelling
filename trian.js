@@ -31,16 +31,18 @@ export function setup() {
     }
   }
   function bump(shape) {
-    var angle = 10
-    var radians = ((Math.PI / 180) * angle * (Math.random()-.5))
-    var cos = Math.cos(radians)
-    var sin = Math.sin(radians)
-    var c = resolution / 2
-    return shape.map((xy) => { 
-      nx = (cos * (xy[0] - c)) + (sin * (xy[1] - c)) + c,
-      ny = (cos * (xy[1] - c)) - (sin * (xy[0] - c)) + c;
-      return [nx, ny];
-    })
+    if (shape) {
+      var angle = 20;
+      var radians = ((Math.PI / 180) * angle * (Math.random()-.5))
+      var cos = Math.cos(radians)
+      var sin = Math.sin(radians)
+      var c = resolution / 2
+      return shape.map(arra => arra.map((xy) => { 
+        const nx = (cos * (xy[0] - c)) + (sin * (xy[1] - c)) + c;
+        const ny = (cos * (xy[1] - c)) - (sin * (xy[0] - c)) + c;
+        return [nx, ny];
+      }));
+    }
   }
   function addToArray(x, y) {
     if (x > 0 && y > 0) {
@@ -193,7 +195,7 @@ export function setup() {
       oldX = null;
       oldY = null;
 
-      s.map((p, i, spell) => {
+      bump(s).map((p, i, spell) => {
         cx.beginPath();
         cx.moveTo(p[0][0] + addX, p[0][1] + addY);
         cx.bezierCurveTo(p[1][0] + addX, p[1][1] + addY,p[2][0] + addX, p[2][1] + addY, p[3][0] + addX, p[3][1] + addY);
