@@ -128,24 +128,24 @@ export function setup() {
  
       return {xs, labels};
     }
- 
-    const model = tf.sequential(); // TODO load
+     
+    const model = await tf.loadModel('../spelling.json') // tf.sequential(); // TODO load
  
     const BATCH_SIZE = 80;
     const TRAIN_BATCHES = 400000;
     const LEARNING_RATE = 0.00001;
     const optimizer = tf.train.adam(LEARNING_RATE);
-    if (model.add) {
+    if (model.add && 0) {
       model.add(tf.layers.dense({units: 80,inputShape: [2 * 4 * longestSpell], kernelInitializer: 'varianceScaling', activation: 'elu'}));
       model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
       model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
       model.add(tf.layers.dense({units: gr.numberOfspells, kernelInitializer: 'varianceScaling', activation: 'softmax'}));
-      model.compile({
-        optimizer: optimizer,
-        loss: 'categoricalCrossentropy',
-        metrics: ['accuracy'],
-      });
     }
+    model.compile({
+      optimizer: optimizer,
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy'],
+    });
  
     // Every few batches, test accuracy over many examples. Ideally, we'd compute
     // accuracy over the whole test set, but for performance we'll use a subset.
@@ -174,15 +174,16 @@ export function setup() {
       batch.xs.dispose();
       batch.labels.dispose();
       if (testBatch != null) {
-        console.log("% Done/Change/Accuracy " + Math.round(i/TRAIN_BATCHES*1000)/10, Math.round(history.history.loss[0] * 100)/100, Math.round( history.history.acc[0] * 1000)/10);
+        console.log("% Done/Accuracy " + Math.round(i/TRAIN_BATCHES*1000)/10, Math.round( history.history.acc[0] * 100000)/1000);
         testBatch.xs.dispose();
         testBatch.labels.dispose();
       }
-      if (i % SAVE_ITERATION_FREQUENCY === 0 && Math.round( history.history.acc[0] * 10000) > 9999 ) {
+      if (i % SAVE_ITERATION_FREQUENCY === 0 && Math.round( history.history.acc[0] * 100000) > 99999 ) {
          model.save('localstorage://spelling').then(v => {
            console.log("saved",v);
            gr.loadModel("localstorage");
          })
+         break;
       }
       await tf.nextFrame();
     }
