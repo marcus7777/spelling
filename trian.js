@@ -61,7 +61,10 @@ export function setup() {
   function getRandom(arr) {
     return arr[Math.floor(Math.random()*arr.length)]
   }
-  document.getElementById("Button").addEventListener("click", async function() {
+  function unround(val) {
+    return val + ((window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)-.5 +(window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)/10-.05) // Math.random()-.5
+  } 
+  document.getElementById("Train").addEventListener("click", async function() {
     let labelsCurves = {};
     for (let index = 0; index < gr.theSpells.length; ++index) {
       if (localStorage.getItem("labels")) {
@@ -70,13 +73,136 @@ export function setup() {
         labelsCurves[gr.theSpells[index]] = [];
       }
     }
-    function unround(val) {
-      return val + ((window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)-.5 +(window.crypto.getRandomValues( new Uint8Array(1) )[0]/254)/10-.05) // Math.random()-.5
-    } 
     // findShape
     const longestSpell = 10
     const spellSize = 2 * 4 * longestSpell;
-    document.getElementById("Button").disabled = true;
+    document.getElementById("Train").disabled = true;
+    document.getElementById("Retrain").disabled = true;
+    var Looping = 0
+    function getRandomSpell() {
+      var label  = getRandom(Object.keys(labelsCurves));
+      var aSpell = bump(getRandom(labelsCurves[label]));
+      if (aSpell) {
+        var theUnroundSpell = aSpell.map(curve => curve.map(xy => xy.map(val => {
+          let unrounded = unround(val);
+          if (unrounded < 0) {
+            return 0;
+          }
+          if (unrounded > resolution) {
+            return resolution;
+          }
+          return unrounded;
+        })));
+        Looping = 0
+      } else {
+        Looping++
+        console.log(Looping)
+        return getRandomSpell()
+      }
+ 
+      let arrayOfZeroBut1 = []
+      for (let i = 0; i < gr.numberOfspells; i++) {
+        if (Object.keys(labelsCurves).indexOf(label) === i) {
+          arrayOfZeroBut1.push(1)
+        } else {
+          arrayOfZeroBut1.push(0)
+        } 
+      }
+        
+      return [ arrayOfZeroBut1, theUnroundSpell.flat(3)]
+    }
+  
+    function getBatch(batchSize) {
+      let batchSpellsArray = []
+      let batchLabelsArray = []
+ 
+      for (let i = 0; i < batchSize; i++) {
+        var spell = getRandomSpell();
+        batchSpellsArray.push(spell[1]);
+        var pad = Array.apply(null, Array(spellSize - spell[1].length)).map(Number.prototype.valueOf, 0)
+        batchSpellsArray.push(pad);
+        batchLabelsArray.push(spell[0]);
+      }
+  
+      const xs     = tf.tensor2d(batchSpellsArray.flat(2), [batchSize, spellSize] ); //,      'bool');
+      const labels = tf.tensor2d(batchLabelsArray, [batchSize, gr.numberOfspells] );    //,      'bool');
+ 
+      return {xs, labels};
+    }
+     
+    const model = tf.sequential();
+ 
+    const BATCH_SIZE = 80;
+    const TRAIN_BATCHES = 400000;
+    const LEARNING_RATE = 0.00001;
+    const optimizer = tf.train.adam(LEARNING_RATE);
+    model.add(tf.layers.dense({units: 80,inputShape: [2 * 4 * longestSpell], kernelInitializer: 'varianceScaling', activation: 'elu'}));
+    model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
+    model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
+    model.add(tf.layers.dense({units: gr.numberOfspells, kernelInitializer: 'varianceScaling', activation: 'softmax'}));
+    model.compile({
+      optimizer: optimizer,
+      loss: 'categoricalCrossentropy',
+      metrics: ['accuracy'],
+    });
+ 
+    // Every few batches, test accuracy over many examples. Ideally, we'd compute
+    // accuracy over the whole test set, but for performance we'll use a subset.
+    const TEST_BATCH_SIZE = 1;
+    const TEST_ITERATION_FREQUENCY = 5;
+    const SAVE_ITERATION_FREQUENCY = 2000;
+    for (let i = 0; i < TRAIN_BATCHES; i++) {
+      const batch = getBatch(BATCH_SIZE);
+  
+      await tf.nextFrame();
+      let testBatch;
+      let validationData;
+      // Every few batches test the accuracy of the mode.
+      if (i % TEST_ITERATION_FREQUENCY === 0) {
+        testBatch = getBatch(TEST_BATCH_SIZE);
+        validationData = [
+          testBatch.xs, testBatch.labels
+        ];
+      }
+  
+      // The entire dataset doesn't fit into memory so we call fit repeatedly
+      // with batches.
+      const history = await model.fit( batch.xs, batch.labels, {batchSize: BATCH_SIZE, validationData, epochs: 1});
+  
+      await tf.nextFrame();
+      batch.xs.dispose();
+      batch.labels.dispose();
+      if (testBatch != null) {
+        console.log("% Done/Accuracy " + Math.round(i/TRAIN_BATCHES*1000)/10, Math.round( history.history.acc[0] * 100000)/1000);
+        testBatch.xs.dispose();
+        testBatch.labels.dispose();
+      }
+      if (i && i % SAVE_ITERATION_FREQUENCY === 0 && history.history.acc[0] > .99999) {
+         break;
+      }
+      await tf.nextFrame();
+    }
+    model.save('localstorage://spelling').then(v => {
+      console.log("saved", v);
+      gr.loadModel("localstorage");
+      document.getElementById("Train").disabled = false;
+      document.getElementById("Retrain").disabled = false;
+    });
+  })
+  document.getElementById("Retrain").addEventListener("click", async function() {
+    let labelsCurves = {};
+    for (let index = 0; index < gr.theSpells.length; ++index) {
+      if (localStorage.getItem("labels")) {
+        labelsCurves[gr.theSpells[index]] = JSON.parse(localStorage.getItem("labels"))[gr.theSpells[index]] || [];
+      } else {
+        labelsCurves[gr.theSpells[index]] = [];
+      }
+    }
+    // findShape
+    const longestSpell = 10
+    const spellSize = 2 * 4 * longestSpell;
+    document.getElementById("Train").disabled = true;
+    document.getElementById("Retrain").disabled = true;
     var Looping = 0
     function getRandomSpell() {
       var label  = getRandom(Object.keys(labelsCurves));
@@ -128,19 +254,17 @@ export function setup() {
  
       return {xs, labels};
     }
-     
-    const model = await tf.loadModel('../spelling.json') // tf.sequential(); // TODO load
- 
+
+    let model;
+    try { 
+       model = await tf.loadModel('localstorage://spelling');
+    } catch(e) {
+       model = await tf.loadModel('spelling.json');
+    }
     const BATCH_SIZE = 80;
     const TRAIN_BATCHES = 400000;
     const LEARNING_RATE = 0.00001;
     const optimizer = tf.train.adam(LEARNING_RATE);
-    if (model.add && 0) {
-      model.add(tf.layers.dense({units: 80,inputShape: [2 * 4 * longestSpell], kernelInitializer: 'varianceScaling', activation: 'elu'}));
-      model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
-      model.add(tf.layers.dense({units: 80, kernelInitializer: 'varianceScaling', activation: 'relu'}));
-      model.add(tf.layers.dense({units: gr.numberOfspells, kernelInitializer: 'varianceScaling', activation: 'softmax'}));
-    }
     model.compile({
       optimizer: optimizer,
       loss: 'categoricalCrossentropy',
@@ -149,8 +273,8 @@ export function setup() {
  
     // Every few batches, test accuracy over many examples. Ideally, we'd compute
     // accuracy over the whole test set, but for performance we'll use a subset.
-    const TEST_BATCH_SIZE = 1;
-    const TEST_ITERATION_FREQUENCY = 5;
+    const TEST_BATCH_SIZE = 5;
+    const TEST_ITERATION_FREQUENCY = 50;
     const SAVE_ITERATION_FREQUENCY = 2000;
     for (let i = 0; i < TRAIN_BATCHES; i++) {
       const batch = getBatch(BATCH_SIZE);
@@ -174,15 +298,11 @@ export function setup() {
       batch.xs.dispose();
       batch.labels.dispose();
       if (testBatch != null) {
-        console.log("% Done/Accuracy " + Math.round(i/TRAIN_BATCHES*1000)/10, Math.round( history.history.acc[0] * 100000)/1000);
+        console.log("Accuracy " + history.history.acc[0]);
         testBatch.xs.dispose();
         testBatch.labels.dispose();
       }
-      if (i % SAVE_ITERATION_FREQUENCY === 0 && Math.round( history.history.acc[0] * 100000) > 99999 ) {
-         model.save('localstorage://spelling').then(v => {
-           console.log("saved",v);
-           gr.loadModel("localstorage");
-         })
+      if (i && i % SAVE_ITERATION_FREQUENCY === 0 && history.history.acc[0] > .99999) {
          break;
       }
       await tf.nextFrame();
@@ -190,7 +310,8 @@ export function setup() {
     model.save('localstorage://spelling').then(v => {
       console.log("saved", v);
       gr.loadModel("localstorage");
-      document.getElementById("Button").disabled = false;
+      document.getElementById("Train").disabled = false;
+      document.getElementById("Retrain").disabled = false;
     });
   })
   
@@ -262,7 +383,7 @@ export function setup() {
     mousedown = false;
     ev.preventDefault();
     let index
-    if (spell.length > 15) {
+    if (spell.length > 5) {
       gr.recognise(spell).then(p => {
           if (p.score > .85) {
               csv.value = p.spell + " score:" + p.score
@@ -310,21 +431,25 @@ export function setup() {
     spells = labelsCurves[selectBox.options[selectBox.selectedIndex].text] || [];
     setupCanvas()
   })
+  let lastPoint = performance.now();
   function onmousemove(ev) {
-    var x 
-    var y  
-    if (ev.changedTouches) { 
-      x = ev.changedTouches["0"].clientX;
-      y = ev.changedTouches["0"].clientY;  
-      mousedown = true;
-    } else {
-      x = ev.clientX;
-      y = ev.clientY;  
+    if (lastPoint + 40 < performance.now()) { // limit to 25
+      var x 
+      var y  
+      if (ev.changedTouches) { 
+        x = ev.changedTouches["0"].clientX;
+        y = ev.changedTouches["0"].clientY;  
+        mousedown = true;
+      } else {
+        x = ev.clientX;
+        y = ev.clientY;  
+      }
+      if (mousedown) {
+        paint(x, y);
+        addToArray(x, y);
+      } 
+      lastPoint = performance.now();
     }
-    if (mousedown) {
-      paint(x, y);
-      addToArray(x, y);
-    } 
   }
   function paint(x, y) {
     cx.beginPath();
